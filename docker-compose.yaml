@@ -1,5 +1,11 @@
 version: "3.8"
 services:
+  change-vol-ownership:
+    image: alpine
+    user: "root"
+    volumes:
+      - ceph-conf:/etc/ceph
+    command: chown -R 167:167 /etc/ceph
   spdk:
     image: quay.io/ceph/spdk:$SPDK_VERSION
     profiles:
@@ -34,6 +40,9 @@ services:
         CEPH_CLUSTER_VERSION:
       labels:
         io.ceph.nvmeof:
+    depends_on:
+      change-vol-ownership:
+        condition: service_completed_successfully
     environment:
       CEPH_VSTART_ARGS:
       VSTART_ARGS: --without-dashboard --memstore
@@ -88,10 +97,13 @@ services:
     ulimits:
       nofile: $NVMEOF_NOFILE
       memlock: -1
+    networks:
+      default:
+        ipv4_address: $NVMEOF_IP_ADDRESS
     ports:
-      - "$NVMEOF_IO_PORT" # I/O controllers
-      - "$NVMEOF_GW_PORT" # Gateway
-      - "$NVMEOF_DISC_PORT" # Discovery
+      - "$NVMEOF_IO_PORT:$NVMEOF_IO_PORT" # I/O controllers
+      - "$NVMEOF_GW_PORT:$NVMEOF_GW_PORT" # Gateway
+      - "$NVMEOF_DISC_PORT:$NVMEOF_DISC_PORT" # Discovery
   nvmeof:
     extends:
       service: nvmeof-base
